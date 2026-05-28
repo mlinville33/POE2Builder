@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:www.pathofexile.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:poedb.tw)",
+      "WebFetch(domain:poe2db.tw)",
+      "WebFetch(domain:poe2scout.com)",
+      "WebFetch(domain:www.poewiki.net)",
+      "WebFetch(domain:www.poe2wiki.net)"
+    ]
+  }
+}
