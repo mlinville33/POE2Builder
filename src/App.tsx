@@ -7,9 +7,11 @@ import { ClassSelector } from './components/ClassSelector';
 import { Tooltip } from './components/Tooltip';
 import { StatsPanel } from './components/StatsPanel';
 import { SkillsManager } from './components/SkillsManager';
+import { GearPanel } from './components/GearPanel';
 import { NewBuildModal } from './components/NewBuildModal';
 import { buildExportFile, downloadBuildFile } from './data/exportBuild';
 import { loadGems, GemIndex } from './data/gems';
+import { loadGear, GearIndex } from './data/gear';
 import { saveBuild, loadBuild } from './data/buildStorage';
 
 function createReducer(tree: ProcessedTree) {
@@ -18,7 +20,7 @@ function createReducer(tree: ProcessedTree) {
       case 'SELECT_CLASS': {
         const allocated = new Set<string>();
         allocated.add(action.startNodeId);
-        return { ...state, selectedClass: action.classIndex, selectedAscendancy: null, allocatedNodes: allocated, hoveredNode: null, skills: [] };
+        return { ...state, selectedClass: action.classIndex, selectedAscendancy: null, allocatedNodes: allocated, hoveredNode: null, skills: [], gear: {} };
       }
       case 'SELECT_ASCENDANCY': {
         return { ...state, selectedAscendancy: action.ascendancyId, hoveredNode: null };
@@ -34,6 +36,7 @@ function createReducer(tree: ProcessedTree) {
           allocatedNodes: allocated,
           hoveredNode: null,
           skills: [],
+          gear: {},
         };
       }
       case 'LOAD_BUILD': {
@@ -45,6 +48,7 @@ function createReducer(tree: ProcessedTree) {
           allocatedNodes: new Set(action.allocatedNodes),
           hoveredNode: null,
           skills: action.skills,
+          gear: action.gear ?? {},
         };
       }
       case 'ALLOCATE_NODE': {
@@ -92,6 +96,14 @@ function createReducer(tree: ProcessedTree) {
           }),
         };
       }
+      case 'SET_GEAR': {
+        return { ...state, gear: { ...state.gear, [action.slot]: action.piece } };
+      }
+      case 'CLEAR_GEAR': {
+        const next = { ...state.gear };
+        delete next[action.slot];
+        return { ...state, gear: next };
+      }
       case 'RESET':
         return initialState;
       default:
@@ -106,6 +118,7 @@ const initialState: TreeState = {
   allocatedNodes: new Set(),
   hoveredNode: null,
   skills: [],
+  gear: {},
   buildName: null,
 };
 
@@ -132,12 +145,19 @@ function TreeApp({ tree }: { tree: ProcessedTree }) {
   const [state, dispatch] = useReducer(createReducer(tree), initialState);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
   const [gems, setGems] = useState<GemIndex | null>(null);
+  const [gearIndex, setGearIndex] = useState<GearIndex | null>(null);
   const [newBuildOpen, setNewBuildOpen] = useState(false);
   const [saveStatus, setSaveStatus] = useState<{ savedAt: string; pending: boolean } | null>(null);
 
   useEffect(() => {
     loadGems().then(setGems).catch(e => console.error('Failed to load gems:', e));
   }, []);
+
+  useEffect(() => {
+    if (state.selectedClass === null) return;
+    if (gearIndex) return;
+    loadGear().then(setGearIndex).catch(e => console.error('Failed to load gear:', e));
+  }, [state.selectedClass, gearIndex]);
 
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -179,6 +199,7 @@ function TreeApp({ tree }: { tree: ProcessedTree }) {
         ascendancyId: data.selectedAscendancy,
         allocatedNodes: data.allocatedNodes,
         skills: data.skills,
+        gear: data.gear,
       });
       setSaveStatus({ savedAt: (data as { savedAt?: string }).savedAt ?? '', pending: false });
     } catch (err) {
@@ -215,6 +236,17 @@ function TreeApp({ tree }: { tree: ProcessedTree }) {
     return map;
   }, [state.selectedClass, tree]);
 
+  const classBaseAttrs = useMemo(() => {
+    if (state.selectedClass === null) return { level: 1, strength: 0, dexterity: 0, intelligence: 0 };
+    const cls = tree.raw.classes[state.selectedClass];
+    return {
+      level: 1,
+      strength: cls?.base_str ?? 0,
+      dexterity: cls?.base_dex ?? 0,
+      intelligence: cls?.base_int ?? 0,
+    };
+  }, [state.selectedClass, tree]);
+
   const hoveredNodeData: SkillNode | null = state.hoveredNode
     ? displayNodeMap.get(state.hoveredNode) ?? tree.nodeMap.get(state.hoveredNode) ?? null
     : null;
@@ -231,9 +263,10 @@ function TreeApp({ tree }: { tree: ProcessedTree }) {
       nodeMap: tree.nodeMap,
       classes: tree.raw.classes,
       skills: state.skills,
+      gear: state.gear,
     });
     downloadBuildFile(filename, content);
-  }, [state.selectedClass, state.selectedAscendancy, state.allocatedNodes, state.skills, tree]);
+  }, [state.selectedClass, state.selectedAscendancy, state.allocatedNodes, state.skills, state.gear, tree]);
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -266,9 +299,15 @@ function TreeApp({ tree }: { tree: ProcessedTree }) {
           <SkillsManager skills={state.skills} gems={gems} dispatch={dispatch} />
         )}
         {state.selectedClass !== null && (
+          <GearPanel gear={state.gear} classBaseAttrs={classBaseAttrs} gearIndex={gearIndex} dispatch={dispatch} />
+        )}
+        {state.selectedClass !== null && (
           <StatsPanel
             allocatedNodes={state.allocatedNodes}
             nodeMap={tree.nodeMap}
+            gear={state.gear}
+            gearIndex={gearIndex}
+            classBaseAttrs={classBaseAttrs}
           />
         )}
       </div>

@@ -1,4 +1,4 @@
-import { TreeState, SelectedSkill } from '../types';
+import { TreeState, SelectedSkill, SelectedGearPiece } from '../types';
 
 export interface SavedBuildPayload {
   name: string;
@@ -6,6 +6,7 @@ export interface SavedBuildPayload {
   selectedAscendancy: string | null;
   allocatedNodes: string[];
   skills: SelectedSkill[];
+  gear?: Record<string, SelectedGearPiece>;
 }
 
 export interface SaveResult {
@@ -41,6 +42,7 @@ export async function saveBuild(state: TreeState): Promise<SaveResult> {
     selectedAscendancy: state.selectedAscendancy,
     allocatedNodes: [...state.allocatedNodes],
     skills: state.skills,
+    gear: state.gear,
   };
   const res = await fetch('/api/builds/save', {
     method: 'POST',

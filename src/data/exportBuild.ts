@@ -1,4 +1,4 @@
-import { SkillNode, ClassDef, SelectedSkill } from '../types';
+import { SkillNode, ClassDef, SelectedSkill, SelectedGearPiece } from '../types';
 
 interface BuildSupport {
   id: string;
@@ -26,6 +26,19 @@ interface BuildFile {
   inventory_slots?: BuildInventorySlot[];
 }
 
+const SLOT_TO_INVENTORY_ID: Record<string, string> = {
+  helmet: 'Helm1',
+  body: 'BodyArmour1',
+  gloves: 'Gloves1',
+  boots: 'Boots1',
+  belt: 'Belt1',
+  amulet: 'Amulet1',
+  ring1: 'Ring1',
+  ring2: 'Ring2',
+  weapon1: 'Weapon1',
+  weapon2: 'Offhand1',
+};
+
 export interface ExportInput {
   selectedClass: number | null;
   selectedAscendancy: string | null;
@@ -33,11 +46,12 @@ export interface ExportInput {
   nodeMap: Map<string, SkillNode>;
   classes: ClassDef[];
   skills?: SelectedSkill[];
+  gear?: Record<string, SelectedGearPiece>;
   recommendedInventory?: BuildInventorySlot[];
 }
 
 export function buildExportFile(input: ExportInput): { filename: string; content: string } {
-  const { selectedClass, selectedAscendancy, allocatedNodes, nodeMap, classes, skills, recommendedInventory } = input;
+  const { selectedClass, selectedAscendancy, allocatedNodes, nodeMap, classes, skills, gear, recommendedInventory } = input;
 
   const passives: string[] = [];
   for (const nodeKey of allocatedNodes) {
@@ -91,8 +105,20 @@ export function buildExportFile(input: ExportInput): { filename: string; content
     build.skills = buildSkills;
   }
 
-  if (recommendedInventory && recommendedInventory.length > 0) {
-    build.inventory_slots = recommendedInventory;
+  const inventorySlots: BuildInventorySlot[] = [];
+  if (gear) {
+    for (const [slot, piece] of Object.entries(gear)) {
+      const inventoryId = SLOT_TO_INVENTORY_ID[slot];
+      if (!inventoryId) continue;
+      const label = piece.uniqueName
+        ? `<gold>{${piece.uniqueName}}\n<grey>{Base: ${piece.basePath.split('/').pop()}}`
+        : `<silver>{${piece.basePath.split('/').pop()}}`;
+      inventorySlots.push({ inventory_id: inventoryId, additional_text: label });
+    }
+  }
+  if (recommendedInventory) inventorySlots.push(...recommendedInventory);
+  if (inventorySlots.length > 0) {
+    build.inventory_slots = inventorySlots;
   }
 
   const safeName = buildName.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');

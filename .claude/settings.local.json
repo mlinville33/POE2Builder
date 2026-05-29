@@ -63,7 +63,15 @@
       "Bash(curl -sL -o data/gem_tags.json \"https://repoe-fork.github.io/poe2/gem_tags.json\")",
       "Bash(curl -sL -o data/skills.json \"https://repoe-fork.github.io/poe2/skills.json\")",
       "Bash(npm run *)",
-      "Bash(curl -s -X POST http://localhost:5173/api/builds/save -H \"Content-Type: application/json\" -d '{\"name\":\"Test Build\",\"selectedClass\":7,\"selectedAscendancy\":\"Witch3\",\"allocatedNodes\":[\"54447\"],\"skills\":[]}')"
+      "Bash(curl -s -X POST http://localhost:5173/api/builds/save -H \"Content-Type: application/json\" -d '{\"name\":\"Test Build\",\"selectedClass\":7,\"selectedAscendancy\":\"Witch3\",\"allocatedNodes\":[\"54447\"],\"skills\":[]}')",
+      "Bash(curl -sI \"https://repoe-fork.github.io/poe2/mods.json\")",
+      "Bash(curl -sI \"https://repoe-fork.github.io/poe2/mods_by_base.json\")",
+      "Bash(curl -sI \"https://repoe-fork.github.io/poe2/stat_translations.json\")",
+      "Bash(curl -sI \"https://repoe-fork.github.io/poe2/stats.json\")",
+      "Bash(curl -sI \"https://repoe-fork.github.io/poe2/stat_translations/passive_skill_aura.json\")",
+      "Bash(curl -s \"https://repoe-fork.github.io/poe2/stat_translations/\")",
+      "Bash(curl -sI \"https://repoe-fork.github.io/poe2/stat_translations/advanced_mod_stat_descriptions.json\")",
+      "Bash(curl -sI \"https://repoe-fork.github.io/poe2/stat_translations/character_panel_stat_descriptions.json\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\mlinv\\OneDrive\\Desktop\\Projects\\POE2Builder"

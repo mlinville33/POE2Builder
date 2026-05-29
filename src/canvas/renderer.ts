@@ -95,13 +95,16 @@ function drawEdges(
   ctx.lineWidth = 2;
   ctx.stroke(inactive);
 
-  ctx.strokeStyle = '#b8a058';
+  ctx.strokeStyle = '#807840';
   ctx.lineWidth = 2;
   ctx.stroke(partial);
 
-  ctx.strokeStyle = '#f0d070';
-  ctx.lineWidth = 3;
+  ctx.shadowColor = '#ffe080';
+  ctx.shadowBlur = 12;
+  ctx.strokeStyle = '#ffe890';
+  ctx.lineWidth = 6;
   ctx.stroke(active);
+  ctx.shadowBlur = 0;
 }
 
 function drawNodes(

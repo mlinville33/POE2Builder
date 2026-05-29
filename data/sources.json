@@ -1,6 +1,6 @@
 {
   "_description": "Source URLs for POE2 data files. Run `npm run refresh-data` to re-pull every file from its documented source.",
-  "_lastRefreshed": "2026-05-28",
+  "_lastRefreshed": "2026-05-29",
   "files": [
     {
       "filename": "skill_tree.json",
@@ -51,6 +51,27 @@
       "source": "RePoE-fork",
       "repo": "https://github.com/repoe-fork/repoe",
       "description": "Item class definitions (114 classes including POE2 types like Spear, Crossbow, Focus, Flail)"
+    },
+    {
+      "filename": "mods.json",
+      "url": "https://repoe-fork.github.io/poe2/mods.json",
+      "source": "RePoE-fork",
+      "repo": "https://github.com/repoe-fork/repoe",
+      "description": "Every modifier (prefix/suffix/implicit) keyed by mod ID: tier ranges, spawn weights, generation type, domain (~11 MB)"
+    },
+    {
+      "filename": "mods_by_base.json",
+      "url": "https://repoe-fork.github.io/poe2/mods_by_base.json",
+      "source": "RePoE-fork",
+      "repo": "https://github.com/repoe-fork/repoe",
+      "description": "Mods indexed by base item metadata path — answers 'what can roll on this base' (~3 MB)"
+    },
+    {
+      "filename": "advanced_mod_stat_descriptions.json",
+      "url": "https://repoe-fork.github.io/poe2/stat_translations/advanced_mod_stat_descriptions.json",
+      "source": "RePoE-fork",
+      "repo": "https://github.com/repoe-fork/repoe",
+      "description": "Stat ID -> formatted display text for mods (e.g. local_attack_speed_+% -> '16% increased Attack Speed')"
     }
   ]
 }
