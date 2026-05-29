@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { SkillNode, SelectedGearPiece } from '../types';
+import { SkillNode, SelectedGearPiece, AttributeChoice, TreeAction } from '../types';
 import { cleanStatText } from '../data/loader';
 import { GearIndex } from '../data/gear';
 import { computeCharacterStats, CharacterStats } from '../data/characterStats';
@@ -10,6 +10,8 @@ interface Props {
   gear: Record<string, SelectedGearPiece>;
   gearIndex: GearIndex | null;
   classBaseAttrs: { level: number; strength: number; dexterity: number; intelligence: number };
+  attributeChoices: Record<string, AttributeChoice>;
+  dispatch: React.Dispatch<TreeAction>;
 }
 
 interface AggregatedStats {
@@ -52,7 +54,7 @@ function formatValue(value: number): string {
   return value.toFixed(1);
 }
 
-export function StatsPanel({ allocatedNodes, nodeMap, gear, gearIndex, classBaseAttrs }: Props) {
+export function StatsPanel({ allocatedNodes, nodeMap, gear, gearIndex, classBaseAttrs, attributeChoices, dispatch }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [level, setLevel] = useState(90);
   const [showDetail, setShowDetail] = useState(false);
@@ -61,7 +63,8 @@ export function StatsPanel({ allocatedNodes, nodeMap, gear, gearIndex, classBase
     allocatedNodes, nodeMap, gear, gearIndex,
     { strength: classBaseAttrs.strength, dexterity: classBaseAttrs.dexterity, intelligence: classBaseAttrs.intelligence },
     level,
-  ), [allocatedNodes, nodeMap, gear, gearIndex, classBaseAttrs, level]);
+    attributeChoices,
+  ), [allocatedNodes, nodeMap, gear, gearIndex, classBaseAttrs, level, attributeChoices]);
 
   const stats = useMemo(
     () => aggregateStats(allocatedNodes, nodeMap),
@@ -135,8 +138,48 @@ export function StatsPanel({ allocatedNodes, nodeMap, gear, gearIndex, classBase
               <Row label="Strength" value={character.attributes.strength} subValue={`base ${character.baseAttributes.strength}`} color="#e08070" />
               <Row label="Dexterity" value={character.attributes.dexterity} subValue={`base ${character.baseAttributes.dexterity}`} color="#80d070" />
               <Row label="Intelligence" value={character.attributes.intelligence} subValue={`base ${character.baseAttributes.intelligence}`} color="#80a8e8" />
-              {character.unspentAttributes > 0 && (
-                <Row label="Unspent (any)" value={`+${character.unspentAttributes}`} color="#c8a8ff" subValue="allocate as needed" />
+
+              {character.unspentAttributeNodes.length > 0 && (
+                <div style={{ marginTop: 8, padding: 8, background: 'rgba(200,168,255,0.06)', border: '1px solid #3a3050', borderRadius: 4 }}>
+                  <div style={{ color: '#c8a8ff', fontSize: 11, marginBottom: 6 }}>
+                    <span style={{ fontWeight: 700 }}>+{character.unspentAttributes}</span> unassigned across {character.unspentAttributeNodes.length} node{character.unspentAttributeNodes.length === 1 ? '' : 's'}
+                  </div>
+                  <div style={{ fontSize: 10, color: '#888', marginBottom: 6 }}>Assign all to:</div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {(['strength', 'dexterity', 'intelligence'] as const).map(choice => (
+                      <button
+                        key={choice}
+                        onClick={() => dispatch({ type: 'ASSIGN_UNSPENT_ATTRIBUTES', choice, nodeIds: character.unspentAttributeNodes })}
+                        style={{
+                          flex: 1,
+                          background: 'transparent',
+                          color: choice === 'strength' ? '#e08070' : choice === 'dexterity' ? '#80d070' : '#80a8e8',
+                          border: `1px solid ${choice === 'strength' ? '#a06030' : choice === 'dexterity' ? '#5ea040' : '#5878a8'}`,
+                          borderRadius: 4,
+                          padding: '3px 6px',
+                          fontSize: 11,
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        {choice === 'strength' ? 'Str' : choice === 'dexterity' ? 'Dex' : 'Int'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {character.assignedAttributeNodes.length > 0 && (
+                <div style={{ marginTop: 6, fontSize: 10, color: '#666', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>{character.assignedAttributeNodes.length} node{character.assignedAttributeNodes.length === 1 ? '' : 's'} assigned</span>
+                  <button
+                    onClick={() => dispatch({ type: 'CLEAR_ATTRIBUTE_CHOICES' })}
+                    style={{ background: 'transparent', color: '#888', border: 'none', cursor: 'pointer', fontSize: 10, padding: 0, textDecoration: 'underline', fontFamily: 'inherit' }}
+                  >
+                    Reset
+                  </button>
+                </div>
               )}
             </Section>
 

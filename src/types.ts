@@ -87,6 +87,8 @@ export interface SelectedGearPiece {
   uniqueName?: string;
 }
 
+export type AttributeChoice = 'strength' | 'dexterity' | 'intelligence';
+
 export interface TreeState {
   selectedClass: number | null;
   selectedAscendancy: string | null;
@@ -94,6 +96,7 @@ export interface TreeState {
   hoveredNode: string | null;
   skills: SelectedSkill[];
   gear: Record<string, SelectedGearPiece>;
+  attributeChoices: Record<string, AttributeChoice>;
   buildName: string | null;
 }
 
@@ -104,11 +107,14 @@ export type TreeAction =
   | { type: 'DEALLOCATE_NODE'; nodeId: string }
   | { type: 'SET_HOVER'; nodeId: string | null }
   | { type: 'NEW_BUILD'; name: string; classIndex: number; startNodeId: string; ascendancyId: string | null }
-  | { type: 'LOAD_BUILD'; name: string; classIndex: number; ascendancyId: string | null; allocatedNodes: string[]; skills: SelectedSkill[]; gear?: Record<string, SelectedGearPiece> }
+  | { type: 'LOAD_BUILD'; name: string; classIndex: number; ascendancyId: string | null; allocatedNodes: string[]; skills: SelectedSkill[]; gear?: Record<string, SelectedGearPiece>; attributeChoices?: Record<string, AttributeChoice> }
   | { type: 'ADD_SKILL'; gemId: string }
   | { type: 'REMOVE_SKILL'; index: number }
   | { type: 'ADD_SUPPORT'; skillIndex: number; supportId: string }
   | { type: 'REMOVE_SUPPORT'; skillIndex: number; supportId: string }
   | { type: 'SET_GEAR'; slot: string; piece: SelectedGearPiece }
   | { type: 'CLEAR_GEAR'; slot: string }
+  | { type: 'SET_ATTRIBUTE_CHOICE'; nodeId: string; choice: AttributeChoice }
+  | { type: 'ASSIGN_UNSPENT_ATTRIBUTES'; choice: AttributeChoice; nodeIds: string[] }
+  | { type: 'CLEAR_ATTRIBUTE_CHOICES' }
   | { type: 'RESET' };

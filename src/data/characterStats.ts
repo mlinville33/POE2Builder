@@ -1,4 +1,4 @@
-import { SkillNode, SelectedGearPiece } from '../types';
+import { SkillNode, SelectedGearPiece, AttributeChoice } from '../types';
 import { cleanStatText } from './loader';
 import { GearIndex } from './gear';
 
@@ -14,6 +14,8 @@ export interface CharacterStats {
   attributes: { strength: number; dexterity: number; intelligence: number };
   baseAttributes: { strength: number; dexterity: number; intelligence: number };
   unspentAttributes: number;
+  unspentAttributeNodes: string[];
+  assignedAttributeNodes: string[];
   life: number;
   mana: number;
   energyShield: number;
@@ -77,7 +79,6 @@ const PATTERNS: Pattern[] = [
   { rx: /^\+(\d+) to Dexterity$/i, apply: (a, n) => { a.flatDex += n; } },
   { rx: /^\+(\d+) to Intelligence$/i, apply: (a, n) => { a.flatInt += n; } },
   { rx: /^\+(\d+) to all Attributes$/i, apply: (a, n) => { a.flatStr += n; a.flatDex += n; a.flatInt += n; } },
-  { rx: /^\+(\d+) to any Attribute$/i, apply: (a, n) => { a.flatAnyAttr += n; } },
   { rx: /^\+(\d+) to Strength and Dexterity$/i, apply: (a, n) => { a.flatStr += n; a.flatDex += n; } },
   { rx: /^\+(\d+) to Strength and Intelligence$/i, apply: (a, n) => { a.flatStr += n; a.flatInt += n; } },
   { rx: /^\+(\d+) to Dexterity and Intelligence$/i, apply: (a, n) => { a.flatDex += n; a.flatInt += n; } },
@@ -152,6 +153,15 @@ function baseManaForLevel(level: number): number {
   return 30 + 6 * Math.max(1, level);
 }
 
+function extractAnyAttributeValue(stats: string[]): number {
+  for (const raw of stats) {
+    const clean = cleanStatText(raw).trim();
+    const m = clean.match(/^\+(\d+) to any Attribute$/i);
+    if (m) return parseInt(m[1], 10);
+  }
+  return 0;
+}
+
 export function computeCharacterStats(
   allocatedNodes: Set<string>,
   nodeMap: Map<string, SkillNode>,
@@ -159,13 +169,27 @@ export function computeCharacterStats(
   gearIndex: GearIndex | null,
   classBaseAttrs: { strength: number; dexterity: number; intelligence: number },
   level: number,
+  attributeChoices: Record<string, AttributeChoice> = {},
 ): CharacterStats {
   const acc = emptyAcc();
+  const unspentAttributeNodes: string[] = [];
+  const assignedAttributeNodes: string[] = [];
 
   for (const nodeId of allocatedNodes) {
     const node = nodeMap.get(nodeId);
     if (!node?.stats) continue;
     if (node.classStartIndex) continue;
+
+    if (node.isGenericAttribute) {
+      const value = extractAnyAttributeValue(node.stats);
+      const choice = attributeChoices[nodeId];
+      if (choice === 'strength') { acc.flatStr += value; assignedAttributeNodes.push(nodeId); }
+      else if (choice === 'dexterity') { acc.flatDex += value; assignedAttributeNodes.push(nodeId); }
+      else if (choice === 'intelligence') { acc.flatInt += value; assignedAttributeNodes.push(nodeId); }
+      else { acc.flatAnyAttr += value; unspentAttributeNodes.push(nodeId); }
+      continue;
+    }
+
     parseStatsInto(node.stats, acc);
   }
 
@@ -199,6 +223,8 @@ export function computeCharacterStats(
       intelligence: classBaseAttrs.intelligence + acc.flatInt,
     },
     unspentAttributes: acc.flatAnyAttr,
+    unspentAttributeNodes,
+    assignedAttributeNodes,
     life,
     mana,
     energyShield,

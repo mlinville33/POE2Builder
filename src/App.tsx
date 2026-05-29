@@ -20,7 +20,7 @@ function createReducer(tree: ProcessedTree) {
       case 'SELECT_CLASS': {
         const allocated = new Set<string>();
         allocated.add(action.startNodeId);
-        return { ...state, selectedClass: action.classIndex, selectedAscendancy: null, allocatedNodes: allocated, hoveredNode: null, skills: [], gear: {} };
+        return { ...state, selectedClass: action.classIndex, selectedAscendancy: null, allocatedNodes: allocated, hoveredNode: null, skills: [], gear: {}, attributeChoices: {} };
       }
       case 'SELECT_ASCENDANCY': {
         return { ...state, selectedAscendancy: action.ascendancyId, hoveredNode: null };
@@ -37,6 +37,7 @@ function createReducer(tree: ProcessedTree) {
           hoveredNode: null,
           skills: [],
           gear: {},
+          attributeChoices: {},
         };
       }
       case 'LOAD_BUILD': {
@@ -49,7 +50,19 @@ function createReducer(tree: ProcessedTree) {
           hoveredNode: null,
           skills: action.skills,
           gear: action.gear ?? {},
+          attributeChoices: action.attributeChoices ?? {},
         };
+      }
+      case 'SET_ATTRIBUTE_CHOICE': {
+        return { ...state, attributeChoices: { ...state.attributeChoices, [action.nodeId]: action.choice } };
+      }
+      case 'ASSIGN_UNSPENT_ATTRIBUTES': {
+        const next = { ...state.attributeChoices };
+        for (const id of action.nodeIds) next[id] = action.choice;
+        return { ...state, attributeChoices: next };
+      }
+      case 'CLEAR_ATTRIBUTE_CHOICES': {
+        return { ...state, attributeChoices: {} };
       }
       case 'ALLOCATE_NODE': {
         if (state.selectedClass === null) return state;
@@ -65,7 +78,9 @@ function createReducer(tree: ProcessedTree) {
         if (!canDeallocate(action.nodeId, state.allocatedNodes, classStartId, tree.adjacency)) return state;
         const allocated = new Set(state.allocatedNodes);
         allocated.delete(action.nodeId);
-        return { ...state, allocatedNodes: allocated };
+        const choices = { ...state.attributeChoices };
+        delete choices[action.nodeId];
+        return { ...state, allocatedNodes: allocated, attributeChoices: choices };
       }
       case 'SET_HOVER':
         if (action.nodeId === state.hoveredNode) return state;
@@ -119,6 +134,7 @@ const initialState: TreeState = {
   hoveredNode: null,
   skills: [],
   gear: {},
+  attributeChoices: {},
   buildName: null,
 };
 
@@ -200,6 +216,7 @@ function TreeApp({ tree }: { tree: ProcessedTree }) {
         allocatedNodes: data.allocatedNodes,
         skills: data.skills,
         gear: data.gear,
+        attributeChoices: data.attributeChoices,
       });
       setSaveStatus({ savedAt: (data as { savedAt?: string }).savedAt ?? '', pending: false });
     } catch (err) {
@@ -308,6 +325,8 @@ function TreeApp({ tree }: { tree: ProcessedTree }) {
             gear={state.gear}
             gearIndex={gearIndex}
             classBaseAttrs={classBaseAttrs}
+            attributeChoices={state.attributeChoices}
+            dispatch={dispatch}
           />
         )}
       </div>
