@@ -38,6 +38,22 @@ Run `npm run refresh-data` whenever GGG publishes a new patch or RePoE-fork upda
 
 Adding a new data source: append an entry to `data/sources.json` and re-run `npm run refresh-data`.
 
+## Saving and loading builds
+
+Click **+ New Build** in the top bar to start a named build. You'll be asked for:
+
+- **Name** — used for the save file and displayed in the top bar
+- **Class** — dropdown of all classes that have ascendancies
+- **Ascendancy** — optional dropdown filtered by the chosen class
+
+After creation, the build is saved to [builds/](builds/) as `{slug}.json`. While the dev server is running:
+
+- **Autosave** runs every 60 seconds whenever a build has a name
+- **Save** button writes immediately (also triggers right after creation)
+- Status is shown next to the build name in the top bar (e.g. "Saved 12s ago")
+
+Save files contain the full build state — name, class, ascendancy, allocated node IDs, skills with supports. This is *not* the same as the export `.build` file; saves are for resuming work later.
+
 ## Exporting builds
 
 When a class is selected, click **Export .build** in the top bar. The downloaded file follows GGG's official 0.5 [build schema](https://www.pathofexile.com/developer/docs/game) (Version 1, Experimental).
@@ -47,15 +63,16 @@ Drop the file in `Documents/My Games/Path of Exile 2/BuildPlanner/` (Windows) to
 ## Project layout
 
 ```
+builds/                   Saved builds (one JSON per build, slug filename)
 data/                     Game data JSON + sources manifest
-public/                   (none — Vite serves data/ as publicDir)
 scripts/
   refresh-data.mjs        Pulls data files from sources.json
 src/
   canvas/                 Skill tree renderer (Canvas 2D)
-  components/             React UI (ClassSelector, SkillsManager, StatsPanel, Tooltip)
-  data/                   Loaders, exporters, build templates
-  App.tsx                 Top-level state + layout
+  components/             React UI (ClassSelector, SkillsManager, StatsPanel, Tooltip, NewBuildModal)
+  data/                   Loaders, exporters, gem index, build save/load
+  App.tsx                 Top-level state + layout, autosave
   main.tsx                Entry point
   types.ts                Shared TypeScript types
+vite.config.ts            Includes dev-server middleware that serves /api/builds (save/list/load)
 ```

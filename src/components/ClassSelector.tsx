@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { ClassDef, AscendancyDef, TreeAction } from '../types';
-import { BuildTemplate, BUILD_TEMPLATES } from '../data/buildTemplates';
+import { listBuilds, BuildListItem } from '../data/buildStorage';
 
 interface Props {
   classes: ClassDef[];
@@ -10,8 +10,11 @@ interface Props {
   allocatedCount: number;
   dispatch: React.Dispatch<TreeAction>;
   onExport: () => void;
-  onLoadTemplate: (template: BuildTemplate) => void;
-  templatesReady: boolean;
+  onNewBuild: () => void;
+  onLoadBuild: (slug: string) => void;
+  onSave: () => void;
+  buildName: string | null;
+  saveStatus: { savedAt: string; pending: boolean } | null;
 }
 
 const CLASS_COLORS: Record<string, string> = {
@@ -31,18 +34,38 @@ function getAscendanciesForClass(classes: ClassDef[], classIndex: number): Ascen
   return cls.ascendancies.filter(a => a.name != null);
 }
 
-export function ClassSelector({ classes, selectedClass, selectedAscendancy, classStartNodes, allocatedCount, dispatch, onExport, onLoadTemplate, templatesReady }: Props) {
-  const [templatesOpen, setTemplatesOpen] = useState(false);
-  const templatesRef = useRef<HTMLDivElement>(null);
+function formatSaveStatus(savedAt: string, now: number): string {
+  if (!savedAt) return 'Not saved';
+  const ageSec = Math.floor((now - new Date(savedAt).getTime()) / 1000);
+  if (ageSec < 5) return 'Saved just now';
+  if (ageSec < 60) return `Saved ${ageSec}s ago`;
+  if (ageSec < 3600) return `Saved ${Math.floor(ageSec / 60)}m ago`;
+  return `Saved ${Math.floor(ageSec / 3600)}h ago`;
+}
+
+export function ClassSelector({ classes, selectedClass, selectedAscendancy, classStartNodes, allocatedCount, dispatch, onExport, onNewBuild, onLoadBuild, onSave, buildName, saveStatus }: Props) {
+  const [buildsOpen, setBuildsOpen] = useState(false);
+  const [savedBuilds, setSavedBuilds] = useState<BuildListItem[] | null>(null);
+  const [buildsLoading, setBuildsLoading] = useState(false);
+  const buildsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!templatesOpen) return;
+    if (!buildsOpen) return;
+    setBuildsLoading(true);
+    listBuilds()
+      .then(list => setSavedBuilds(list.sort((a, b) => b.savedAt.localeCompare(a.savedAt))))
+      .catch(err => { console.error('Failed to list builds:', err); setSavedBuilds([]); })
+      .finally(() => setBuildsLoading(false));
+  }, [buildsOpen]);
+
+  useEffect(() => {
+    if (!buildsOpen) return;
     const onClickAway = (e: MouseEvent) => {
-      if (!templatesRef.current?.contains(e.target as Node)) setTemplatesOpen(false);
+      if (!buildsRef.current?.contains(e.target as Node)) setBuildsOpen(false);
     };
     document.addEventListener('mousedown', onClickAway);
     return () => document.removeEventListener('mousedown', onClickAway);
-  }, [templatesOpen]);
+  }, [buildsOpen]);
 
   const playableClasses = useMemo(() => {
     return classes
@@ -59,10 +82,7 @@ export function ClassSelector({ classes, selectedClass, selectedAscendancy, clas
 
   return (
     <div style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
+      flexShrink: 0,
       display: 'flex',
       alignItems: 'center',
       gap: 8,
@@ -141,41 +161,58 @@ export function ClassSelector({ classes, selectedClass, selectedAscendancy, clas
           </>
         )}
       </div>
-      <div ref={templatesRef} style={{ position: 'relative' }}>
+      {buildName && (
+        <div style={{ color: '#fff', fontSize: 12, padding: '3px 8px', background: 'rgba(168,200,255,0.1)', border: '1px solid #2a4a78', borderRadius: 4 }}>
+          <span style={{ fontWeight: 700 }}>{buildName}</span>
+          {saveStatus && (
+            <span style={{ color: '#888', marginLeft: 8, fontSize: 11 }}>
+              {saveStatus.pending ? 'Saving…' : formatSaveStatus(saveStatus.savedAt, Date.now())}
+            </span>
+          )}
+        </div>
+      )}
+
+      <div ref={buildsRef} style={{ position: 'relative' }}>
         <button
-          onClick={() => setTemplatesOpen(o => !o)}
-          disabled={!templatesReady}
-          title={templatesReady ? 'Load a pre-built starter build' : 'Loading gem data...'}
+          onClick={() => setBuildsOpen(o => !o)}
           style={{
-            background: templatesOpen ? '#3a3050' : 'transparent',
-            color: templatesReady ? '#c8a8ff' : '#5a5a5a',
-            border: `1px solid ${templatesOpen ? '#8a6ac8' : '#4a3a6a'}`,
+            background: buildsOpen ? '#3a3050' : 'transparent',
+            color: '#c8a8ff',
+            border: `1px solid ${buildsOpen ? '#8a6ac8' : '#4a3a6a'}`,
             borderRadius: 4,
             padding: '4px 10px',
             fontSize: 12,
-            cursor: templatesReady ? 'pointer' : 'not-allowed',
+            cursor: 'pointer',
             fontWeight: 600,
           }}
         >
-          Templates {templatesOpen ? '▴' : '▾'}
+          Builds {buildsOpen ? '▴' : '▾'}
         </button>
-        {templatesOpen && (
+        {buildsOpen && (
           <div style={{
             position: 'absolute',
             top: 'calc(100% + 6px)',
             right: 0,
-            minWidth: 320,
+            minWidth: 280,
+            maxHeight: 360,
+            overflowY: 'auto',
             background: 'rgba(12, 12, 14, 0.98)',
             border: '1px solid #4a3a6a',
             borderRadius: 6,
-            padding: 6,
+            padding: 4,
             zIndex: 200,
             boxShadow: '0 6px 18px rgba(0,0,0,0.8)',
           }}>
-            {BUILD_TEMPLATES.map(t => (
+            {buildsLoading && (
+              <div style={{ padding: 12, color: '#888', fontSize: 12, textAlign: 'center', fontStyle: 'italic' }}>Loading…</div>
+            )}
+            {!buildsLoading && savedBuilds && savedBuilds.length === 0 && (
+              <div style={{ padding: 12, color: '#888', fontSize: 12, textAlign: 'center', fontStyle: 'italic' }}>No saved builds yet</div>
+            )}
+            {!buildsLoading && savedBuilds && savedBuilds.map(b => (
               <button
-                key={t.id}
-                onClick={() => { onLoadTemplate(t); setTemplatesOpen(false); }}
+                key={b.slug}
+                onClick={() => { onLoadBuild(b.slug); setBuildsOpen(false); }}
                 style={{
                   display: 'block',
                   width: '100%',
@@ -191,13 +228,56 @@ export function ClassSelector({ classes, selectedClass, selectedAscendancy, clas
                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(138,106,200,0.15)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
               >
-                <div style={{ color: '#c8a8ff', fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{t.name}</div>
-                <div style={{ color: '#888', fontSize: 11, lineHeight: 1.4 }}>{t.description}</div>
+                <div style={{ color: '#fff', fontWeight: 600, fontSize: 13 }}>{b.name}</div>
+                <div style={{ color: '#888', fontSize: 11, marginTop: 2 }}>{new Date(b.savedAt).toLocaleString()}</div>
               </button>
             ))}
+            <div style={{ borderTop: '1px solid #2a2a2a', marginTop: 4, paddingTop: 4 }}>
+              <button
+                onClick={() => { setBuildsOpen(false); onNewBuild(); }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  background: 'transparent',
+                  color: '#c8a8ff',
+                  border: 'none',
+                  borderRadius: 4,
+                  padding: '8px 10px',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  fontWeight: 600,
+                  fontSize: 13,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(138,106,200,0.15)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                + Create new build
+              </button>
+            </div>
           </div>
         )}
       </div>
+
+      {buildName && (
+        <button
+          onClick={onSave}
+          disabled={saveStatus?.pending}
+          title="Save build to disk now"
+          style={{
+            background: 'transparent',
+            color: '#80d070',
+            border: '1px solid #4a8a35',
+            borderRadius: 4,
+            padding: '4px 10px',
+            fontSize: 12,
+            cursor: saveStatus?.pending ? 'wait' : 'pointer',
+            fontWeight: 600,
+          }}
+        >
+          {saveStatus?.pending ? 'Saving…' : 'Save'}
+        </button>
+      )}
 
       {selectedClass !== null && (
         <>

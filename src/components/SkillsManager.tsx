@@ -108,10 +108,10 @@ export function SkillsManager({ skills, gems, dispatch }: Props) {
   return (
     <div style={{
       position: 'absolute',
-      top: 60,
+      top: 16,
       left: 16,
       width: 320,
-      maxHeight: 'calc(100vh - 80px)',
+      maxHeight: 'calc(100% - 32px)',
       background: 'rgba(12, 12, 14, 0.95)',
       border: '1px solid #3a3a3a',
       borderRadius: 6,

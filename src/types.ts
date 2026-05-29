@@ -88,7 +88,7 @@ export interface TreeState {
   allocatedNodes: Set<string>;
   hoveredNode: string | null;
   skills: SelectedSkill[];
-  templateId: string | null;
+  buildName: string | null;
 }
 
 export type TreeAction =
@@ -97,7 +97,8 @@ export type TreeAction =
   | { type: 'ALLOCATE_NODE'; nodeId: string }
   | { type: 'DEALLOCATE_NODE'; nodeId: string }
   | { type: 'SET_HOVER'; nodeId: string | null }
-  | { type: 'LOAD_TEMPLATE'; templateId: string; classIndex: number; startNodeId: string; ascendancyId: string; skills: SelectedSkill[] }
+  | { type: 'NEW_BUILD'; name: string; classIndex: number; startNodeId: string; ascendancyId: string | null }
+  | { type: 'LOAD_BUILD'; name: string; classIndex: number; ascendancyId: string | null; allocatedNodes: string[]; skills: SelectedSkill[] }
   | { type: 'ADD_SKILL'; gemId: string }
   | { type: 'REMOVE_SKILL'; index: number }
   | { type: 'ADD_SUPPORT'; skillIndex: number; supportId: string }

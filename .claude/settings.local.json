@@ -62,7 +62,8 @@
       "Bash(curl -sL -o data/skill_gems.json \"https://repoe-fork.github.io/poe2/skill_gems.json\")",
       "Bash(curl -sL -o data/gem_tags.json \"https://repoe-fork.github.io/poe2/gem_tags.json\")",
       "Bash(curl -sL -o data/skills.json \"https://repoe-fork.github.io/poe2/skills.json\")",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(curl -s -X POST http://localhost:5173/api/builds/save -H \"Content-Type: application/json\" -d '{\"name\":\"Test Build\",\"selectedClass\":7,\"selectedAscendancy\":\"Witch3\",\"allocatedNodes\":[\"54447\"],\"skills\":[]}')"
     ],
     "additionalDirectories": [
       "c:\\Users\\mlinv\\OneDrive\\Desktop\\Projects\\POE2Builder"

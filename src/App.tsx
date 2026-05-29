@@ -1,5 +1,5 @@
-import { useReducer, useEffect, useState, useCallback, useMemo } from 'react';
-import { TreeState, TreeAction, SkillNode, SelectedSkill } from './types';
+import { useReducer, useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { TreeState, TreeAction, SkillNode } from './types';
 import { ProcessedTree, loadTreeData, buildDisplayNodeMap, buildDisplayEdges } from './data/loader';
 import { canAllocate, canDeallocate } from './data/graph';
 import { SkillTreeCanvas } from './canvas/SkillTreeCanvas';
@@ -7,9 +7,10 @@ import { ClassSelector } from './components/ClassSelector';
 import { Tooltip } from './components/Tooltip';
 import { StatsPanel } from './components/StatsPanel';
 import { SkillsManager } from './components/SkillsManager';
+import { NewBuildModal } from './components/NewBuildModal';
 import { buildExportFile, downloadBuildFile } from './data/exportBuild';
 import { loadGems, GemIndex } from './data/gems';
-import { BuildTemplate } from './data/buildTemplates';
+import { saveBuild, loadBuild } from './data/buildStorage';
 
 function createReducer(tree: ProcessedTree) {
   return function reducer(state: TreeState, action: TreeAction): TreeState {
@@ -17,10 +18,34 @@ function createReducer(tree: ProcessedTree) {
       case 'SELECT_CLASS': {
         const allocated = new Set<string>();
         allocated.add(action.startNodeId);
-        return { ...state, selectedClass: action.classIndex, selectedAscendancy: null, allocatedNodes: allocated, hoveredNode: null, skills: [], templateId: null };
+        return { ...state, selectedClass: action.classIndex, selectedAscendancy: null, allocatedNodes: allocated, hoveredNode: null, skills: [] };
       }
       case 'SELECT_ASCENDANCY': {
         return { ...state, selectedAscendancy: action.ascendancyId, hoveredNode: null };
+      }
+      case 'NEW_BUILD': {
+        const allocated = new Set<string>();
+        allocated.add(action.startNodeId);
+        return {
+          ...state,
+          buildName: action.name,
+          selectedClass: action.classIndex,
+          selectedAscendancy: action.ascendancyId,
+          allocatedNodes: allocated,
+          hoveredNode: null,
+          skills: [],
+        };
+      }
+      case 'LOAD_BUILD': {
+        return {
+          ...state,
+          buildName: action.name,
+          selectedClass: action.classIndex,
+          selectedAscendancy: action.ascendancyId,
+          allocatedNodes: new Set(action.allocatedNodes),
+          hoveredNode: null,
+          skills: action.skills,
+        };
       }
       case 'ALLOCATE_NODE': {
         if (state.selectedClass === null) return state;
@@ -41,19 +66,6 @@ function createReducer(tree: ProcessedTree) {
       case 'SET_HOVER':
         if (action.nodeId === state.hoveredNode) return state;
         return { ...state, hoveredNode: action.nodeId };
-      case 'LOAD_TEMPLATE': {
-        const allocated = new Set<string>();
-        allocated.add(action.startNodeId);
-        return {
-          ...state,
-          selectedClass: action.classIndex,
-          selectedAscendancy: action.ascendancyId,
-          allocatedNodes: allocated,
-          hoveredNode: null,
-          skills: action.skills,
-          templateId: action.templateId,
-        };
-      }
       case 'ADD_SKILL': {
         if (state.skills.some(s => s.gemId === action.gemId)) return state;
         return { ...state, skills: [...state.skills, { gemId: action.gemId, supportIds: [] }] };
@@ -94,7 +106,7 @@ const initialState: TreeState = {
   allocatedNodes: new Set(),
   hoveredNode: null,
   skills: [],
-  templateId: null,
+  buildName: null,
 };
 
 export default function App() {
@@ -120,44 +132,59 @@ function TreeApp({ tree }: { tree: ProcessedTree }) {
   const [state, dispatch] = useReducer(createReducer(tree), initialState);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
   const [gems, setGems] = useState<GemIndex | null>(null);
+  const [newBuildOpen, setNewBuildOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<{ savedAt: string; pending: boolean } | null>(null);
 
   useEffect(() => {
     loadGems().then(setGems).catch(e => console.error('Failed to load gems:', e));
   }, []);
 
-  const onLoadTemplate = useCallback((template: BuildTemplate) => {
-    if (!gems) {
-      console.warn('Gems not yet loaded; cannot apply template');
-      return;
-    }
-    const startNodeId = tree.classStartNodes.get(template.classIndex);
-    if (!startNodeId) return;
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
-    const skills: SelectedSkill[] = [];
-    for (const tplSkill of template.skills) {
-      const gem = gems.byDisplayName.get(tplSkill.gemDisplayName);
-      if (!gem) {
-        console.warn(`Gem not found in data: ${tplSkill.gemDisplayName}`);
-        continue;
-      }
-      const maxSupports = tplSkill.maxSupports ?? 0;
-      const supportIds = gem.recommended_supports.slice(0, maxSupports);
-      skills.push({
-        gemId: gem.id,
-        supportIds,
-        note: tplSkill.note,
+  const doSave = useCallback(async () => {
+    const s = stateRef.current;
+    if (!s.buildName || s.selectedClass === null) return;
+    setSaveStatus(prev => ({ savedAt: prev?.savedAt ?? '', pending: true }));
+    try {
+      const result = await saveBuild(s);
+      setSaveStatus({ savedAt: result.savedAt, pending: false });
+    } catch (err) {
+      console.error('Save failed:', err);
+      setSaveStatus(prev => ({ savedAt: prev?.savedAt ?? '', pending: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (stateRef.current.buildName) doSave();
+    }, 60000);
+    return () => clearInterval(id);
+  }, [doSave]);
+
+  const onCreateBuild = useCallback((args: { name: string; classIndex: number; startNodeId: string; ascendancyId: string | null }) => {
+    dispatch({ type: 'NEW_BUILD', ...args });
+    setNewBuildOpen(false);
+    setSaveStatus(null);
+    setTimeout(() => doSave(), 0);
+  }, [doSave]);
+
+  const onLoadBuild = useCallback(async (slug: string) => {
+    try {
+      const data = await loadBuild(slug);
+      dispatch({
+        type: 'LOAD_BUILD',
+        name: data.name,
+        classIndex: data.selectedClass,
+        ascendancyId: data.selectedAscendancy,
+        allocatedNodes: data.allocatedNodes,
+        skills: data.skills,
       });
+      setSaveStatus({ savedAt: (data as { savedAt?: string }).savedAt ?? '', pending: false });
+    } catch (err) {
+      console.error('Load failed:', err);
     }
-
-    dispatch({
-      type: 'LOAD_TEMPLATE',
-      templateId: template.id,
-      classIndex: template.classIndex,
-      startNodeId,
-      ascendancyId: template.ascendancyId,
-      skills,
-    });
-  }, [gems, tree.classStartNodes]);
+  }, []);
 
   const displayNodeMap = useMemo(
     () => buildDisplayNodeMap(tree.nodeMap, state.selectedAscendancy, tree.ascendancies),
@@ -209,7 +236,7 @@ function TreeApp({ tree }: { tree: ProcessedTree }) {
   }, [state.selectedClass, state.selectedAscendancy, state.allocatedNodes, state.skills, tree]);
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       <ClassSelector
         classes={tree.raw.classes}
         selectedClass={state.selectedClass}
@@ -218,10 +245,13 @@ function TreeApp({ tree }: { tree: ProcessedTree }) {
         allocatedCount={state.allocatedNodes.size}
         dispatch={dispatch}
         onExport={onExport}
-        onLoadTemplate={onLoadTemplate}
-        templatesReady={gems !== null}
+        onNewBuild={() => setNewBuildOpen(true)}
+        onLoadBuild={onLoadBuild}
+        onSave={doSave}
+        buildName={state.buildName}
+        saveStatus={saveStatus}
       />
-      <div style={{ position: 'absolute', top: 45, left: 0, right: 0, bottom: 0 }}>
+      <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
         <SkillTreeCanvas
           displayNodeMap={displayNodeMap}
           displayEdges={displayEdges}
@@ -232,17 +262,25 @@ function TreeApp({ tree }: { tree: ProcessedTree }) {
           fitBounds={fitBounds}
           nameOverrides={nameOverrides}
         />
+        {state.selectedClass !== null && gems && (
+          <SkillsManager skills={state.skills} gems={gems} dispatch={dispatch} />
+        )}
+        {state.selectedClass !== null && (
+          <StatsPanel
+            allocatedNodes={state.allocatedNodes}
+            nodeMap={tree.nodeMap}
+          />
+        )}
       </div>
-      {state.selectedClass !== null && gems && (
-        <SkillsManager skills={state.skills} gems={gems} dispatch={dispatch} />
-      )}
-      {state.selectedClass !== null && (
-        <StatsPanel
-          allocatedNodes={state.allocatedNodes}
-          nodeMap={tree.nodeMap}
+      <Tooltip node={hoveredNodeData} screenPos={hoverPos} />
+      {newBuildOpen && (
+        <NewBuildModal
+          classes={tree.raw.classes}
+          classStartNodes={tree.classStartNodes}
+          onCreate={onCreateBuild}
+          onCancel={() => setNewBuildOpen(false)}
         />
       )}
-      <Tooltip node={hoveredNodeData} screenPos={hoverPos} />
     </div>
   );
 }
