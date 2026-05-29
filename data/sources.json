@@ -1,0 +1,56 @@
+{
+  "_description": "Source URLs for POE2 data files. Run `npm run refresh-data` to re-pull every file from its documented source.",
+  "_lastRefreshed": "2026-05-28",
+  "files": [
+    {
+      "filename": "skill_tree.json",
+      "url": "https://raw.githubusercontent.com/grindinggear/poe2-skilltree-export/master/data.json",
+      "source": "Grinding Gear Games (official export)",
+      "repo": "https://github.com/grindinggear/poe2-skilltree-export",
+      "version": "0.5.0 Preview 2",
+      "description": "Full passive skill tree: 5,102 nodes, 6,020 edges, 12 classes with ascendancies"
+    },
+    {
+      "filename": "skill_gems.json",
+      "url": "https://repoe-fork.github.io/poe2/skill_gems.json",
+      "source": "RePoE-fork (community, extracted from game files)",
+      "repo": "https://github.com/repoe-fork/repoe",
+      "description": "Per-gem metadata: color, primary attribute, level requirements, tags"
+    },
+    {
+      "filename": "gem_tags.json",
+      "url": "https://repoe-fork.github.io/poe2/gem_tags.json",
+      "source": "RePoE-fork",
+      "repo": "https://github.com/repoe-fork/repoe",
+      "description": "Tag IDs and display names — used for validating skill+support compatibility"
+    },
+    {
+      "filename": "skills.json",
+      "url": "https://repoe-fork.github.io/poe2/skills.json",
+      "source": "RePoE-fork",
+      "repo": "https://github.com/repoe-fork/repoe",
+      "description": "Active skill definitions with stats, descriptions, and per-level scaling (large: ~24 MB)"
+    },
+    {
+      "filename": "base_items.json",
+      "url": "https://repoe-fork.github.io/poe2/base_items.json",
+      "source": "RePoE-fork",
+      "repo": "https://github.com/repoe-fork/repoe",
+      "description": "All base item types: weapons, armor, flasks, currency, gems by name"
+    },
+    {
+      "filename": "uniques.json",
+      "url": "https://repoe-fork.github.io/poe2/uniques.json",
+      "source": "RePoE-fork",
+      "repo": "https://github.com/repoe-fork/repoe",
+      "description": "All unique items with name, item class, and visual identity"
+    },
+    {
+      "filename": "item_classes.json",
+      "url": "https://repoe-fork.github.io/poe2/item_classes.json",
+      "source": "RePoE-fork",
+      "repo": "https://github.com/repoe-fork/repoe",
+      "description": "Item class definitions (114 classes including POE2 types like Spear, Crossbow, Focus, Flail)"
+    }
+  ]
+}
